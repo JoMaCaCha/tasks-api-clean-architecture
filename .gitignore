@@ -1,0 +1,43 @@
+# --- Entornos virtuales ---
+.venv/
+venv/
+env/
+
+# --- Bytecode / cachés de Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Cachés de herramientas de calidad ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Cobertura de tests ---
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# --- Empaquetado / build ---
+build/
+dist/
+*.egg-info/
+
+# --- Secretos / configuración local ---
+.env
+
+# --- Documentos / binarios que no forman parte del software entregable ---
+docs/
+*.pdf
+
+# --- Bases de datos locales (p. ej. SQLite de pruebas) ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- IDE / sistema operativo ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

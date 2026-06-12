@@ -1,0 +1,79 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-crehana}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crehana}
+      POSTGRES_DB: ${POSTGRES_DB:-crehana_tasks}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crehana} -d ${POSTGRES_DB:-crehana_tasks}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crehana}:${POSTGRES_PASSWORD:-crehana}@db:5432/${POSTGRES_DB:-crehana_tasks}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    # Endurecimiento en runtime (ver DECISION_LOG ADR-16): sin escalada de privilegios,
+    # sin capacidades de Linux y con el sistema de archivos en solo lectura (escritura
+    # efímera limitada a /tmp).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Opcional: worker de outbox como proceso dedicado (ADR-15). No arranca con
+  # `docker compose up`; actívalo con `docker compose --profile worker up` y pon
+  # RUN_OUTBOX_WORKER_IN_PROCESS=false en el .env para que la API no duplique el polling
+  # (gracias a FOR UPDATE SKIP LOCKED ejecutar ambos es seguro, solo redundante). Comparte
+  # la imagen de la API; el `entrypoint` se sobrescribe para NO aplicar migraciones (las
+  # aplica la API en su arranque) y ejecutar directamente el worker.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["worker"]
+    entrypoint: ["python", "-m", "app.infrastructure.outbox_worker"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crehana}:${POSTGRES_PASSWORD:-crehana}@db:5432/${POSTGRES_DB:-crehana_tasks}
+    depends_on:
+      db:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Opcional: contador de rate-limit compartido entre réplicas (ADR-17). No arranca con
+  # `docker compose up`; actívalo con `docker compose --profile redis up` y configura
+  # RATE_LIMITER_BACKEND=redis y REDIS_URL=redis://redis:6379/0 en el .env.
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis"]
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:

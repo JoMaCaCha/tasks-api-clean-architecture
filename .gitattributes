@@ -1,0 +1,3 @@
+# Normaliza los finales de línea a LF en el repositorio (evita churn CRLF en Windows
+# y garantiza scripts/configuración con LF dentro de la imagen Docker Linux).
+* text=auto eol=lf

@@ -1,0 +1,204 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar uv (gestor de lock)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Instalar el entorno EXACTO del lock (runtime + dev)
+        # Instala las versiones pinneadas en uv.lock —incluido el toolchain de verificación
+        # (black, isort, flake8, ruff, mypy)—, de modo que las puertas de calidad corran
+        # contra el mismo toolchain con el que el código fue verificado. Sustituye a
+        # `pip install -e ".[dev]"`, que solo respeta los rangos `>=` de pyproject.toml y
+        # dejaba la verificación sin fijar (un release de mypy/isort/SQLAlchemy podía poner el
+        # build en rojo sin un solo cambio de código). Extiende a las puertas la misma
+        # reproducibilidad que ADR-19 daba al runtime. Ver DECISION_LOG ADR-23.
+        run: uv sync --frozen --extra dev
+
+      - name: Lockfile y requirements sin drift (uv)
+        # uv.lock debe estar al día con pyproject.toml y requirements.txt debe coincidir con
+        # lo exportado del lock (build de Docker reproducible y verificado por hash). Ver ADR-19.
+        run: |
+          uv lock --check
+          uv export --frozen --no-dev --no-emit-project --format requirements-txt -o requirements.txt
+          git diff --exit-code requirements.txt
+
+      # Las puertas de formato/lint cubren TODO el repo (`.`), no solo `app tests`: así se
+      # incluyen `migrations/` (autogeneradas por Alembic) y la raíz, y el veredicto coincide
+      # con los comandos documentados en el README (`black .`, `isort .`, `ruff check .`). Los
+      # archivos generados nacen conformes gracias a los `post_write_hooks` de alembic.ini.
+      # Todas las herramientas excluyen `.venv` por defecto. mypy sigue acotado a `app`
+      # (las migraciones no son superficie tipada). Ver DECISION_LOG ADR-23.
+      - name: Formateo (black)
+        run: uv run --frozen black --check .
+
+      - name: Orden de imports (isort)
+        run: uv run --frozen isort --check-only .
+
+      - name: Linter (flake8)
+        run: uv run --frozen flake8 .
+
+      - name: Linter (ruff)
+        run: uv run --frozen ruff check .
+
+      - name: Tipado estático (mypy --strict)
+        run: uv run --frozen mypy app
+
+      - name: Migraciones sin drift (alembic upgrade + check)
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./_ci_alembic.db
+        run: |
+          uv run --frozen alembic upgrade head
+          uv run --frozen alembic check
+
+      - name: Tests + cobertura (pytest, falla bajo 90%)
+        run: uv run --frozen pytest
+
+      - name: Publicar reporte de cobertura (coverage.xml)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: warn
+
+  integration-postgres:
+    name: Integración (PostgreSQL real)
+    runs-on: ubuntu-latest
+    needs: quality
+    # La suite de integración corre por defecto sobre SQLite async (rápida, hermética). Este
+    # job la repite contra un PostgreSQL real vía TEST_DATABASE_URL para validar los caminos
+    # que dependen del dialecto —el `INSERT ... ON CONFLICT` idempotente del outbox, los
+    # tipos ENUM nativos y el esquema— en el mismo motor que producción. Ver conftest.py.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crehana
+          POSTGRES_PASSWORD: crehana
+          POSTGRES_DB: crehana_tasks_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U crehana -d crehana_tasks_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar uv (gestor de lock)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Instalar el entorno EXACTO del lock (runtime + dev)
+        run: uv sync --frozen --extra dev
+
+      - name: Suite de integración contra PostgreSQL (sin cobertura)
+        env:
+          TEST_DATABASE_URL: postgresql+asyncpg://crehana:crehana@localhost:5432/crehana_tasks_test
+        run: uv run --frozen pytest tests/integration --no-cov
+
+  e2e:
+    name: E2E (despliegue real)
+    runs-on: ubuntu-latest
+    needs: quality
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: crehana
+          POSTGRES_PASSWORD: crehana
+          POSTGRES_DB: crehana_tasks
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U crehana -d crehana_tasks"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar uv (gestor de lock)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Instalar el entorno EXACTO del lock (runtime + dev)
+        run: uv sync --frozen --extra dev
+
+      - name: Aplicar migraciones (alembic upgrade head)
+        env:
+          DATABASE_URL: postgresql+asyncpg://crehana:crehana@localhost:5432/crehana_tasks
+        run: uv run --frozen alembic upgrade head
+
+      - name: Lanzar la API (uvicorn) contra PostgreSQL real
+        env:
+          DATABASE_URL: postgresql+asyncpg://crehana:crehana@localhost:5432/crehana_tasks
+          JWT_SECRET_KEY: ci-e2e-secret-key-de-al-menos-32-caracteres
+          # La suite E2E ejercita muchos register/login desde la misma IP; el límite por
+          # IP (validado de forma determinista en integración) se desactiva en el entorno
+          # E2E para no envenenar la ventana del servidor compartido. Ver ADR-17.
+          LOGIN_RATE_LIMIT_MAX_ATTEMPTS: 0
+        run: uv run --frozen uvicorn app.web.main:app --host 0.0.0.0 --port 8000 &
+
+      - name: Esperar readiness del servidor
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8000/health/ready; then
+              echo "API lista"; exit 0
+            fi
+            sleep 1
+          done
+          echo "La API no alcanzó readiness a tiempo"; exit 1
+
+      - name: Ejecutar pruebas E2E (HTTP real, sin cobertura)
+        env:
+          E2E_BASE_URL: http://localhost:8000
+        run: uv run --frozen pytest -m e2e --no-cov
+
+  image-scan:
+    name: Escaneo de imagen (Trivy)
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen
+        run: docker build -t crehana-tasks-api:ci .
+
+      - name: Escanear con Trivy (falla en HIGH/CRITICAL corregibles)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: crehana-tasks-api:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
