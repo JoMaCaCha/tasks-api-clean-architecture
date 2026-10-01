@@ -1,4 +1,4 @@
-"""Casos de uso de tareas (§1.a.ii–iv) y bonus de asignación (§1.b.iii–iv).
+"""Casos de uso de tareas y de asignación de responsable.
 
 El acceso se autoriza por **rol de pertenencia** a la lista (ver DECISION_LOG ADR-14):
 las lecturas requieren `viewer`; las escrituras, `editor`. No ser miembro hace la lista
@@ -61,7 +61,7 @@ class TaskService:
         (ADR-14); asignar **no** concede acceso por sí mismo, de modo que un `editor` no
         pueda sumar miembros de forma indirecta (evita una escalada de privilegios). Para
         asignar a alguien externo, el `owner` lo añade antes como colaborador. La invitación
-        por email (§1.b.iv) queda así dirigida a quien sí puede acceder. Ver DECISION_LOG
+        por email queda así dirigida a quien sí puede acceder. Ver DECISION_LOG
         ADR-20 (sustituye la "asignación a terceros" de ADR-3).
 
         Orden de comprobación: primero la existencia del usuario (404) y luego la pertenencia
@@ -247,7 +247,7 @@ class TaskService:
         *,
         expected_version: int | None,
     ) -> tuple[Task, User]:
-        """Asigna un responsable (§1.b.iii). Devuelve la tarea y el usuario asignado."""
+        """Asigna un responsable. Devuelve la tarea y el usuario asignado."""
         task = await self._get_task_for(list_id, task_id, user_id, ListRole.EDITOR)
         self._ensure_version(task, expected_version)
         user = await self._ensure_assignee(list_id, assignee_id)

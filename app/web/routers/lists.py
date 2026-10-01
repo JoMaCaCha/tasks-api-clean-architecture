@@ -1,4 +1,4 @@
-"""Endpoints de listas de tareas (§1.a.i) y de colaboradores.
+"""Endpoints de listas de tareas y de colaboradores.
 
 Protegidos con JWT y autorizados por rol de pertenencia. Los listados usan paginación
 por keyset (`cursor` = id del último elemento de la página previa).

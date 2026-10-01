@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # que rechaza el secreto de ejemplo. Ver DECISION_LOG ADR-5.
     app_env: str = "dev"
 
-    database_url: str = "postgresql+asyncpg://crehana:crehana@db:5432/crehana_tasks"
+    database_url: str = "postgresql+asyncpg://tasks:tasks@db:5432/tasks_db"
 
     # Requerido (sin default) y de al menos 32 caracteres: si falta o es débil,
     # pydantic-settings lanza ValidationError al instanciarse.
@@ -87,7 +87,7 @@ class Settings(BaseSettings):
     rate_limit_trusted_proxies: str = ""
 
     # Nivel de log de la aplicación (DEBUG/INFO/WARNING/...). El envío simulado de email
-    # (§1.b.iv) y la entrega del outbox se registran en INFO.
+    # y la entrega del outbox se registran en INFO.
     log_level: str = "INFO"
 
     # Worker del outbox: por defecto se ejecuta dentro del proceso de la API (en el
@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     smtp_port: int = 25
     smtp_user: str | None = None
     smtp_password: str | None = None
-    smtp_from: str = "no-reply@crehana-tasks.local"
+    smtp_from: str = "no-reply@tasks-api.local"
     smtp_use_tls: bool = False
 
     @model_validator(mode="after")

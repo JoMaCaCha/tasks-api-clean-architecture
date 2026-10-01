@@ -1,14 +1,14 @@
 # DECISION_LOG — Registro de decisiones técnicas (ADR)
 
-Decisiones de diseño en los puntos donde el enunciado del desafío deja libertad o no
-especifica. La **fuente de verdad** del alcance es ese enunciado; cada registro describe la
-decisión **vigente** en el código y su porqué.
+Decisiones de diseño del servicio en los puntos donde los requisitos funcionales dejan
+libertad o no especifican. Cada registro describe la decisión **vigente** en el código y su
+porqué.
 
 ---
 
 ## ADR-1 — Arquitectura: cuatro capas (arquitectura limpia)
 
-**Contexto.** El PDF (§2.a) pide "estructura limpia por capas (Domain, Application,
+**Contexto.** El requisito es una "estructura limpia por capas (Domain, Application,
 Infrastructure)".
 
 **Decisión.** Cuatro capas: `domain`, `application`, `infrastructure` y `web`. La cuarta
@@ -35,8 +35,8 @@ PostgreSQL en los modelos para mantener la portabilidad con SQLite en los tests.
 
 ## ADR-3 — Propiedad y acceso de las listas
 
-**Contexto.** El PDF (§1.a) no menciona propiedad de las listas. Los usuarios solo aparecen
-en los bonus: autenticación (§1.b.ii) y asignación de tareas (§1.b.iii). Un servicio
+**Contexto.** Los requisitos no mencionan propiedad de las listas. Los usuarios solo aparecen
+en las funcionalidades de autenticación y de asignación de tareas. Un servicio
 multiusuario no puede exponer las listas como recursos globales (filtraría datos entre
 usuarios).
 
@@ -50,7 +50,7 @@ rol insuficiente devuelve **403**.
 
 ## ADR-4 — Acceso de usuarios: registro + login con bcrypt
 
-**Contexto.** El bonus §1.b.ii pide "login y autenticación con JWT". No define cómo se crean
+**Contexto.** Se requiere "login y autenticación con JWT". No define cómo se crean
 los usuarios.
 
 **Decisión.** Endpoints `POST /auth/register` y `POST /auth/login`. Las contraseñas se
@@ -66,7 +66,7 @@ tareas.
 
 ## ADR-5 — Alcance del JWT: todo protegido salvo `/auth/*` y `/health`
 
-**Contexto.** §1.b.ii habla de "proteger endpoints".
+**Contexto.** El requisito habla de "proteger endpoints".
 
 **Decisión.** Todos los endpoints de `/lists` y `/lists/{id}/tasks` exigen un Bearer JWT
 válido. Son públicos únicamente el healthcheck y los endpoints de autenticación.
@@ -116,7 +116,7 @@ en memoria: no necesitan migraciones y se mantienen rápidos.
 
 ## ADR-7 — Porcentaje de completitud: valor calculado, no persistido
 
-**Contexto.** §1.a.iv pide "un campo extra donde se indique el porcentaje de completitud".
+**Contexto.** Se requiere "un campo extra donde se indique el porcentaje de completitud".
 
 **Decisión.** Se calcula en `application` como `tareas DONE / total` de la lista (redondeado a
 2 decimales); una lista sin tareas devuelve `0.0`. No se persiste. El conteo se resuelve con
@@ -130,7 +130,7 @@ la división por cero. Se expone en `GET /lists/{id}` y en el listado de tareas.
 
 ## ADR-8 — Transiciones de estado: libres
 
-**Contexto.** §1.a.iii pide "cambiar el estado de una tarea" sin definir transiciones válidas.
+**Contexto.** Se requiere "cambiar el estado de una tarea" sin definir transiciones válidas.
 
 **Decisión.** Se permite cualquier transición entre los estados del enum
 (`pending`/`in_progress`/`done`). No se implementa una máquina de estados restrictiva.
@@ -142,7 +142,7 @@ requiriera, la validación se añadiría en `TaskService.change_status`.
 
 ## ADR-9 — Notificación de asignación: puerto `INotifier` (log o SMTP)
 
-**Contexto.** El bonus §1.b.iv pide "simulación de envío de invitación a usuarios por email
+**Contexto.** Se requiere una "simulación de envío de invitación a usuarios por email
 (no real)".
 
 **Decisión.** El puerto `INotifier` vive en `domain`, con dos implementaciones en
@@ -239,7 +239,7 @@ sin `COUNT` adicional.
 
 ## ADR-13 — Sesiones: access token corto + refresh con rotación y revocación
 
-**Contexto.** El bonus §1.b.ii pide JWT para proteger endpoints. Un único access token de
+**Contexto.** Se requiere JWT para proteger endpoints. Un único access token de
 larga duración no permite cerrar sesión ni invalidar credenciales filtradas (OWASP).
 
 **Decisión.** Dos credenciales: un **access token** JWT corto (15 min, sin estado, con los
@@ -345,7 +345,7 @@ cuanto exista una distroless 3.12 (o usando Chainguard).
 
 **Contexto.** Los endpoints de autenticación deben acotar el número de intentos: sin límite, un
 atacante puede probar miles de credenciales por segundo (fuerza bruta) o dar de alta cuentas en
-masa. La vacante enfatiza la seguridad.
+masa. La seguridad es un requisito de primer orden.
 
 **Decisión.** Un puerto `ILoginRateLimiter` (en `domain`) con una implementación de **ventana
 deslizante** en memoria (`InMemorySlidingWindowRateLimiter`, en `infrastructure`). Se aplica
@@ -431,7 +431,7 @@ ejecución (pip). `pyproject.toml` mantiene los rangos como entrada de resoluci�
 
 ## ADR-20 — Asignación de tareas: el responsable debe ser miembro de la lista
 
-**Contexto.** El bonus §1.b.iii pide asignar un responsable y §1.b.iv simular el envío de una
+**Contexto.** Se requiere asignar un responsable y simular el envío de una
 **invitación** por email. Permitir asignar a cualquier usuario registrado tendría dos
 problemas: (1) la "invitación" se enviaría a alguien **sin acceso** a la lista (incoherente);
 (2) como crear tareas/asignar requiere rol `editor` pero **gestionar miembros requiere `owner`**
@@ -564,7 +564,7 @@ atajo de conveniencia, con la salvedad de que **no fija** el toolchain de verifi
 ## ADR-24 — Versionado de la API y política de deprecación
 
 **Contexto.** Toda la superficie pública cuelga del prefijo `/api/v1`
-([app/web/main.py](app/web/main.py)). El enunciado no pide versionado, pero exponer una API sin
+([app/web/main.py](app/web/main.py)). Los requisitos no piden versionado, pero exponer una API sin
 una política explícita de evolución traslada al cliente el riesgo de un cambio incompatible
 silencioso. Conviene dejar documentado **cómo** se introduce una versión nueva y **cómo** se
 retira la antigua antes de que exista un `v2`.
@@ -641,7 +641,7 @@ longitud. Cubierto por `tests/unit/test_config.py`.
 leen-y-escriben dentro de la transacción de la request: el servicio lee la tarea (autorización +
 estado) y luego la actualiza. Dos editores que leen la misma tarea y guardan en paralelo
 producirían una **actualización perdida** (el segundo pisa al primero sin avisar). Es la clase de
-problema que el enunciado no menciona pero que un servicio multiusuario real debe resolver.
+problema que los requisitos no mencionan pero que un servicio multiusuario real debe resolver.
 
 **Decisión.** Control de **concurrencia optimista** en dos niveles, sin bloqueos pesimistas:
 
@@ -730,12 +730,12 @@ y desaparece en cuanto la migración hace algo.
 
 ## ADR-28 — Persistencia políglota (NoSQL): estrategia documentada, introducción diferida
 
-**Contexto.** La **vacante** (no el enunciado de la prueba) pide manejo de bases de datos **SQL y
+**Contexto.** El servicio debe poder evolucionar hacia persistencia **SQL y
 NoSQL** (MySQL, PostgreSQL, MongoDB, etc.). El núcleo de este servicio es deliberadamente
 **transaccional** —unidad de trabajo por request, outbox transaccional (ADR-15) y concurrencia
 optimista (ADR-26)— y vive en **PostgreSQL/SQLAlchemy**. El NoSQL **clave-valor ya está en el
-código**: Redis es el backend opcional del límite de login (ADR-17). Lo que falta para cubrir la
-vacante por completo es un **almacén de documentos**. La decisión es **no** introducirlo ahora
+código**: Redis es el backend opcional del límite de login (ADR-17). Lo que falta para cubrir ese
+escenario por completo es un **almacén de documentos**. La decisión es **no** introducirlo ahora
 (sería ampliar el alcance y arriesgar invariantes del núcleo) y documentar **cuándo** y **cómo**
 entraría, sin reescribir casos de uso.
 
@@ -762,10 +762,10 @@ los puertos existentes** (las cuatro capas permiten una incorporación aditiva):
    servicio en CI** para integración (mismo patrón que el job de PostgreSQL del `ci.yml`), más
    fiable que `mongomock`.
 
-**Por qué diferirlo.** El enunciado pide explícitamente priorizar lo principal y documentar lo
+**Por qué diferirlo.** El criterio del proyecto es priorizar lo principal y documentar lo
 pendiente. El dominio actual (listas/tareas con invariantes transaccionales) **no tiene una
 necesidad real** de documento ni de caché; adelantarlos sería sobre-ingeniería que contradice la
-disciplina de alcance de esta entrega. Como los puertos hacen la incorporación **aditiva** (un
+disciplina de alcance del proyecto. Como los puertos hacen la incorporación **aditiva** (un
 puerto + un adaptador, sin tocar los casos de uso), el costo de diferir es bajo y el de adelantar
 (complejidad y un motor más que operar) es real.
 
@@ -781,8 +781,8 @@ reescribe lógica de negocio.
 
 ## ADR-29 — Despliegue en producción: Kubernetes/GKE + IaC (Terraform) + despliegue sin claves, diferido
 
-**Contexto.** La **vacante** pide contenedores/**Kubernetes**, **CI/CD** y **nube**
-(AWS/GCP/Azure), con **IaC/Terraform** como deseable. El repo ya entrega lo que hace a la app
+**Contexto.** Un despliegue de producción requiere contenedores/**Kubernetes**, **CI/CD** y
+**nube** (AWS/GCP/Azure), idealmente con **IaC/Terraform**. El repo ya entrega lo que hace a la app
 desplegable: imagen multistage endurecida (sin privilegios, sistema de archivos de solo lectura,
 base por digest, dependencias con hash — ADR-16), **healthchecks** liveness/readiness pensados
 para orquestadores (ADR-10), configuración por entorno (12-factor, ADR-5), **migraciones

@@ -234,7 +234,7 @@ async def test_assign_non_member_returns_409_then_ok_after_adding(
     # tras añadirlo como viewer, la asignación procede.
     outsider = await client.post(
         "/api/v1/auth/register",
-        json={"email": "outsider@crehana.com", "password": "supersecret123"},
+        json={"email": "outsider@example.com", "password": "supersecret123"},
     )
     outsider_id = outsider.json()["id"]
     task = await client.post(
@@ -292,14 +292,14 @@ async def test_assign_enqueues_invitation_delivered_by_outbox(
 
     response = await client.patch(
         f"/api/v1/lists/{list_id}/tasks/{task_id}/assignee",
-        json={"assignee_id": 1},  # el usuario autenticado (tester@crehana.com) es id=1
+        json={"assignee_id": 1},  # el usuario autenticado (tester@example.com) es id=1
         headers=_if_match(auth_headers, task.headers["etag"]),
     )
     assert response.status_code == 200
 
     spy = _SpyNotifier()
     assert await _drain_outbox(session_factory, spy) == 1
-    assert spy.calls == [("tester@crehana.com", "Documentar")]
+    assert spy.calls == [("tester@example.com", "Documentar")]
     # Una segunda pasada no reenvía (ya entregado).
     assert await _drain_outbox(session_factory, spy) == 0
 
@@ -311,7 +311,7 @@ async def test_removing_member_unassigns_their_tasks(
     # (assignee_id → NULL) en la misma transacción que la expulsión. Ejercita el UPDATE real.
     collab = await client.post(
         "/api/v1/auth/register",
-        json={"email": "collab-unassign@crehana.com", "password": "supersecret123"},
+        json={"email": "collab-unassign@example.com", "password": "supersecret123"},
     )
     collab_id = collab.json()["id"]
     await client.post(
@@ -353,4 +353,4 @@ async def test_create_with_assignee_enqueues_invitation(
 
     spy = _SpyNotifier()
     assert await _drain_outbox(session_factory, spy) == 1
-    assert spy.calls == [("tester@crehana.com", "Revisar")]
+    assert spy.calls == [("tester@example.com", "Revisar")]

@@ -2,7 +2,7 @@
 
 Los loggers de la app se nombran bajo el prefijo ``app.*`` (p. ej. ``app.notifications``,
 ``app.outbox``). Por defecto, uvicorn solo configura sus propios loggers, así que sin esto
-los mensajes de la app (como el "envío simulado" de email del §1.b.iv) no se verían. Aquí
+los mensajes de la app (como el "envío simulado" de email) no se verían. Aquí
 se configura el logger raíz ``app`` con un handler propio y el nivel deseado.
 """
 

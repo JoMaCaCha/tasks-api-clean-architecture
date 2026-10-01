@@ -62,7 +62,7 @@ async def test_lists_are_isolated_per_user(
     created = await client.post("/api/v1/lists", json={"title": "De A"}, headers=auth_headers)
     list_id = created.json()["id"]
 
-    headers_b = await _register_login(client, "userb@crehana.com")
+    headers_b = await _register_login(client, "userb@example.com")
     listing_b = await client.get("/api/v1/lists", headers=headers_b)
     assert listing_b.json()["items"] == []
     # Acceder a la lista ajena devuelve 404 (no se filtra su existencia).
@@ -108,8 +108,8 @@ async def test_collaborator_editor_can_work_viewer_cannot(
     list_id = (
         await client.post("/api/v1/lists", json={"title": "Equipo"}, headers=auth_headers)
     ).json()["id"]
-    b_id = await _register(client, "editor@crehana.com")
-    c_id = await _register(client, "viewer@crehana.com")
+    b_id = await _register(client, "editor@example.com")
+    c_id = await _register(client, "viewer@example.com")
 
     add_b = await client.post(
         f"/api/v1/lists/{list_id}/members",
@@ -123,8 +123,8 @@ async def test_collaborator_editor_can_work_viewer_cannot(
         headers=auth_headers,
     )
 
-    headers_b = await _login(client, "editor@crehana.com")
-    headers_c = await _login(client, "viewer@crehana.com")
+    headers_b = await _login(client, "editor@example.com")
+    headers_c = await _login(client, "viewer@example.com")
 
     # B (editor) ve la lista y puede crear tareas.
     assert (await client.get(f"/api/v1/lists/{list_id}", headers=headers_b)).status_code == 200
@@ -166,7 +166,7 @@ async def test_members_lifecycle(client: AsyncClient, auth_headers: dict[str, st
     list_id = (
         await client.post("/api/v1/lists", json={"title": "L"}, headers=auth_headers)
     ).json()["id"]
-    collab_id = await _register(client, "collab@crehana.com")
+    collab_id = await _register(client, "collab@example.com")
 
     await client.post(
         f"/api/v1/lists/{list_id}/members",
@@ -192,7 +192,7 @@ async def test_members_lifecycle(client: AsyncClient, auth_headers: dict[str, st
     )
     assert removed.status_code == 204
     # Tras quitarlo, el colaborador ya no es miembro.
-    headers_collab = await _login(client, "collab@crehana.com")
+    headers_collab = await _login(client, "collab@example.com")
     assert (await client.get(f"/api/v1/lists/{list_id}", headers=headers_collab)).status_code == 404
 
 
@@ -201,7 +201,7 @@ async def test_members_keyset_pagination(client: AsyncClient, auth_headers: dict
     list_id = (
         await client.post("/api/v1/lists", json={"title": "Equipo"}, headers=auth_headers)
     ).json()["id"]
-    for email in ("m1@crehana.com", "m2@crehana.com"):
+    for email in ("m1@example.com", "m2@example.com"):
         collab_id = await _register(client, email)
         await client.post(
             f"/api/v1/lists/{list_id}/members",

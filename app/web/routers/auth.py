@@ -1,4 +1,4 @@
-"""Endpoints de autenticación (bonus §1.b.ii): registro, login, refresh y logout.
+"""Endpoints de autenticación: registro, login, refresh y logout.
 
 Todos los endpoints de `/auth/*` están limitados por IP (ver DECISION_LOG ADR-17): los de
 credenciales (`/register`, `/login`, `/refresh`) frenan la fuerza bruta y el barrido de

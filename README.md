@@ -1,4 +1,4 @@
-# Crehana Tasks API — Desafío Técnico Backend
+# Tasks API — FastAPI y arquitectura limpia
 
 API REST de gestión de **listas de tareas** construida con **FastAPI**, **SQLAlchemy 2.0
 async** (PostgreSQL + `asyncpg`), **Pydantic V2** y **arquitectura limpia** (cuatro capas).
@@ -39,19 +39,18 @@ es ofrecer un backend limpio y testeable que cubra:
 El contrato completo y probador interactivo están en `http://localhost:8000/docs`
 (Swagger UI) una vez levantada la aplicación.
 
-### Alcance: núcleo del desafío vs. extras
+### Alcance: núcleo vs. extras
 
-El enunciado sugiere un **límite de tiempo** de 4-6 h y pide priorizar lo principal. Para que la
-revisión sea transparente, esto es lo que es **núcleo** (lo exigido) y lo que son **extras**
-de demostración añadidos deliberadamente por encima del mínimo:
+El proyecto separa el **núcleo** funcional de los **extras** de nivel producción, añadidos
+deliberadamente por encima del mínimo:
 
 | Capa | Qué incluye | Estado |
 |------|-------------|--------|
-| **Núcleo obligatorio** (§1.a, §2–6) | CRUD de listas y tareas, cambio de estado, listado con filtros estado/prioridad + % de completitud, capas limpias, Pydantic, excepciones propias, pytest (unit + integración), flake8/black, Docker + compose, README + DECISION_LOG | Completo |
-| **Bonus del enunciado** (§1.b) | Login/JWT, asignación de responsable, notificación ficticia por email | Completo |
-| **Extras propios** (fuera del límite de tiempo) | Refresh tokens con rotación y detección de reúso (ADR-13), RBAC por colaboradores (ADR-14), outbox transaccional con worker e idempotencia (ADR-15), límite de intentos por IP con backend Redis opcional (ADR-17), migraciones Alembic (ADR-6), purga de tokens (ADR-21), paginación keyset (ADR-12), suite E2E, escaneo Trivy y lockfile con `uv` (ADR-16/19) | Opcional |
+| **Núcleo** | CRUD de listas y tareas, cambio de estado, listado con filtros estado/prioridad + % de completitud, capas limpias, Pydantic, excepciones propias, pytest (unit + integración), flake8/black, Docker + compose, README + DECISION_LOG | Completo |
+| **Funcionalidades adicionales** | Login/JWT, asignación de responsable, notificación ficticia por email | Completo |
+| **Extras de nivel producción** | Refresh tokens con rotación y detección de reúso (ADR-13), RBAC por colaboradores (ADR-14), outbox transaccional con worker e idempotencia (ADR-15), límite de intentos por IP con backend Redis opcional (ADR-17), migraciones Alembic (ADR-6), purga de tokens (ADR-21), paginación keyset (ADR-12), suite E2E, escaneo Trivy y lockfile con `uv` (ADR-16/19) | Opcional |
 
-> Los **extras** no son necesarios para cumplir el desafío; se incluyen para mostrar cómo
+> Los **extras** no son necesarios para el núcleo; se incluyen para mostrar cómo
 > evolucionaría hacia producción y están aislados detrás de **interruptores de configuración**
 > o perfiles de compose, de modo que el núcleo funciona sin ellos. Cada uno está justificado en
 > un ADR.
@@ -169,7 +168,7 @@ En ambos casos necesitas **git** para clonar el repositorio:
 
 ```bash
 git clone <url-del-repositorio>
-cd prueba_crehana
+cd tasks-api-clean-architecture
 ```
 
 > En **Windows** puedes usar PowerShell o CMD; los comandos `git`, `docker` y `python`
@@ -263,7 +262,7 @@ Se cargan desde el entorno o desde un archivo `.env` (ver `.env.example`).
 | Variable | Obligatoria | Default | Descripción |
 |----------|:-----------:|---------|-------------|
 | `APP_ENV` | No | `dev` | Entorno de ejecución (`dev`/`development`/`local`/`test` o `production`). Fuera de desarrollo, el secreto de ejemplo de `.env.example` se **rechaza al arrancar**. Ver **ADR-5**. |
-| `DATABASE_URL` | No | `postgresql+asyncpg://crehana:crehana@db:5432/crehana_tasks` | Conexión async a PostgreSQL. |
+| `DATABASE_URL` | No | `postgresql+asyncpg://tasks:tasks@db:5432/tasks_db` | Conexión async a PostgreSQL. |
 | `JWT_SECRET_KEY` | **Sí** | — | Clave de firma de los JWT. **Mínimo 32 caracteres** (RFC 7518 §3.2: ≥ 256 bits para HS256). Sin ella la app **no arranca**. Con `APP_ENV=production` se rechaza tanto el valor de ejemplo como cualquier secreto de **baja entropía** (< 112 bits estimados). Ver **ADR-25**. |
 | `JWT_ALGORITHM` | No | `HS256` | Algoritmo de firma del token. |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | No | `15` | Minutos de validez del access token. |
@@ -279,7 +278,7 @@ Se cargan desde el entorno o desde un archivo `.env` (ver `.env.example`).
 | `NOTIFIER_BACKEND` | No | `log` | Backend de email: `log` (simulado) o `smtp` (real). |
 | `LOG_LEVEL` | No | `INFO` | Nivel de log de la app (el envío simulado y la entrega del outbox se registran en INFO). |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASSWORD` / `SMTP_FROM` / `SMTP_USE_TLS` | No | `localhost` / `25` / — / — / `no-reply@…` / `false` | Config SMTP cuando `NOTIFIER_BACKEND=smtp`. |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | No | `crehana` / `crehana` / `crehana_tasks` | Credenciales del servicio `db` de docker-compose. |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | No | `tasks` / `tasks` / `tasks_db` | Credenciales del servicio `db` de docker-compose. |
 
 > **Seguridad:** `JWT_SECRET_KEY` no tiene valor por defecto a propósito. El `.env.example`
 > trae uno **solo para desarrollo**; en producción debe inyectarse desde un gestor de
@@ -297,12 +296,12 @@ el flujo de extremo a extremo con `curl`:
 # 1. Registrar un usuario
 curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "dev@crehana.com", "password": "supersecret123"}'
+  -d '{"email": "dev@example.com", "password": "supersecret123"}'
 
 # 2. Login → obtienes un access_token
 curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email": "dev@crehana.com", "password": "supersecret123"}'
+  -d '{"email": "dev@example.com", "password": "supersecret123"}'
 # Respuesta: {"access_token": "eyJ...", "refresh_token": "...", "token_type": "bearer"}
 
 # 3. Usar el token (reemplaza <TOKEN>) para crear una lista
@@ -337,7 +336,7 @@ pytest tests/integration                # solo integración (API en proceso)
 pytest -k completion                    # filtra por nombre de test
 ```
 
-El enunciado pide ≥ 75 %; `pytest.ini` fija el piso en **90 %** (`--cov-fail-under=90`) para
+`pytest.ini` fija el piso de cobertura en **90 %** (`--cov-fail-under=90`) para
 blindar el logro, e imprime el reporte línea a línea. La **cobertura medida actual es ≈ 98 %**
 (muy por encima del mínimo);
 cada corrida genera además `coverage.xml`, que en CI se publica como artefacto
@@ -358,7 +357,7 @@ deterministas y sin servidor.
 >
 > ```bash
 > docker compose up db -d        # levanta solo PostgreSQL
-> TEST_DATABASE_URL=postgresql+asyncpg://crehana:crehana@localhost:5432/crehana_tasks \
+> TEST_DATABASE_URL=postgresql+asyncpg://tasks:tasks@localhost:5432/tasks_db \
 >   pytest tests/integration --no-cov
 > ```
 >
@@ -466,12 +465,12 @@ que nace conforme a las puertas de todo el repo y no rompe `ruff check .` ni la 
 
 ## Decisiones técnicas
 
-Las decisiones de diseño no especificadas por el enunciado (acceso por colaboradores con rol,
+Las decisiones de diseño (acceso por colaboradores con rol,
 alcance del JWT, gestión del esquema, secreto obligatorio, etc.) se documentan como ADRs en
 [`DECISION_LOG.md`](DECISION_LOG.md).
 
-La **hoja de ruta a producción** que excede el **límite de tiempo** del desafío —y que se
-documenta en lugar de implementarse, para no sobre-dimensionar la entrega— está acotada en ADRs
+La **hoja de ruta a producción** que excede el alcance actual —y que se documenta en lugar
+de implementarse, para no sobre-dimensionar el servicio— está acotada en ADRs
 propios: **ADR-28** (persistencia políglota / NoSQL: almacén de documentos MongoDB con PyMongo
 Async y caché Redis, detrás de puertos) y **ADR-29** (despliegue en GKE con Kubernetes/Kustomize,
 IaC con Terraform y despliegue continuo sin claves por Workload Identity Federation).

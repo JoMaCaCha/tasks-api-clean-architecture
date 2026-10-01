@@ -105,7 +105,7 @@ def create_app() -> FastAPI:
     settings = get_settings()
     configure_logging(settings.log_level)
     app = FastAPI(
-        title="Crehana Tasks API",
+        title="Tasks API",
         version="0.1.0",
         description="API de gestión de listas de tareas — Desafío Técnico Backend.",
         lifespan=lifespan,

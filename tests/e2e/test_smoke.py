@@ -27,7 +27,7 @@ async def test_protected_endpoint_requires_auth(client: httpx.AsyncClient) -> No
 
 async def test_full_task_flow(client: httpx.AsyncClient) -> None:
     # Email único: el PostgreSQL real es persistente entre corridas.
-    creds = {"email": f"e2e-{uuid4().hex}@crehana.com", "password": "supersecret123"}
+    creds = {"email": f"e2e-{uuid4().hex}@example.com", "password": "supersecret123"}
 
     assert (await client.post("/api/v1/auth/register", json=creds)).status_code == 201
     login = await client.post("/api/v1/auth/login", json=creds)
@@ -72,7 +72,7 @@ async def test_full_task_flow(client: httpx.AsyncClient) -> None:
     # colaborador y luego se asigna.
     assignee = await client.post(
         "/api/v1/auth/register",
-        json={"email": f"assignee-{uuid4().hex}@crehana.com", "password": "supersecret123"},
+        json={"email": f"assignee-{uuid4().hex}@example.com", "password": "supersecret123"},
     )
     assignee_id = assignee.json()["id"]
     add_member = await client.post(

@@ -170,7 +170,7 @@ class TaskResponse(BaseModel):
 
 
 class TaskCollectionResponse(BaseModel):
-    """Listado paginado de tareas con el campo extra de completitud (§1.a.iv).
+    """Listado paginado de tareas con el campo extra de completitud.
 
     `completion_percentage` se calcula sobre **todas** las tareas de la lista, no solo
     sobre la página devuelta.

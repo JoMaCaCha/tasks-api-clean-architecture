@@ -1,4 +1,4 @@
-"""Casos de uso de autenticación (bonus §1.b.ii) con refresh tokens.
+"""Casos de uso de autenticación con refresh tokens.
 
 Flujo: `login`/`register` → un **access token** corto (JWT, stateless) y un **refresh
 token** opaco de vida larga (se persiste solo su hash). `refresh` aplica **rotación

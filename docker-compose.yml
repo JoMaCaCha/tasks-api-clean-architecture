@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-crehana}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crehana}
-      POSTGRES_DB: ${POSTGRES_DB:-crehana_tasks}
+      POSTGRES_USER: ${POSTGRES_USER:-tasks}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tasks}
+      POSTGRES_DB: ${POSTGRES_DB:-tasks_db}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-crehana} -d ${POSTGRES_DB:-crehana_tasks}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tasks} -d ${POSTGRES_DB:-tasks_db}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crehana}:${POSTGRES_PASSWORD:-crehana}@db:5432/${POSTGRES_DB:-crehana_tasks}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tasks}:${POSTGRES_PASSWORD:-tasks}@db:5432/${POSTGRES_DB:-tasks_db}
     ports:
       - "8000:8000"
     depends_on:
@@ -54,7 +54,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-crehana}:${POSTGRES_PASSWORD:-crehana}@db:5432/${POSTGRES_DB:-crehana_tasks}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-tasks}:${POSTGRES_PASSWORD:-tasks}@db:5432/${POSTGRES_DB:-tasks_db}
     depends_on:
       db:
         condition: service_healthy

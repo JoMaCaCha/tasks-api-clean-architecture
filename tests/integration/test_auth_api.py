@@ -46,7 +46,7 @@ async def test_readiness_returns_503_when_db_unreachable() -> None:
 
 
 async def test_register_login_flow(client: AsyncClient) -> None:
-    creds = {"email": "new@crehana.com", "password": "supersecret123"}
+    creds = {"email": "new@example.com", "password": "supersecret123"}
     register = await client.post("/api/v1/auth/register", json=creds)
     assert register.status_code == 201
     assert register.json()["email"] == creds["email"]
@@ -60,7 +60,7 @@ async def test_register_login_flow(client: AsyncClient) -> None:
 
 
 async def test_refresh_rotates_and_old_token_is_rejected(client: AsyncClient) -> None:
-    creds = {"email": "refresh@crehana.com", "password": "supersecret123"}
+    creds = {"email": "refresh@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     tokens = (await client.post("/api/v1/auth/login", json=creds)).json()
 
@@ -83,7 +83,7 @@ async def test_refresh_rotates_and_old_token_is_rejected(client: AsyncClient) ->
 
 
 async def test_logout_revokes_refresh_token(client: AsyncClient) -> None:
-    creds = {"email": "logout@crehana.com", "password": "supersecret123"}
+    creds = {"email": "logout@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     tokens = (await client.post("/api/v1/auth/login", json=creds)).json()
 
@@ -98,7 +98,7 @@ async def test_logout_revokes_refresh_token(client: AsyncClient) -> None:
 
 
 async def test_logout_all_invalidates_access_token(client: AsyncClient) -> None:
-    creds = {"email": "logoutall@crehana.com", "password": "supersecret123"}
+    creds = {"email": "logoutall@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     tokens = (await client.post("/api/v1/auth/login", json=creds)).json()
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
@@ -111,7 +111,7 @@ async def test_logout_all_invalidates_access_token(client: AsyncClient) -> None:
 
 
 async def test_register_duplicate_returns_409(client: AsyncClient) -> None:
-    creds = {"email": "dup@crehana.com", "password": "supersecret123"}
+    creds = {"email": "dup@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     second = await client.post("/api/v1/auth/register", json=creds)
     assert second.status_code == 409
@@ -121,20 +121,20 @@ async def test_register_rejects_password_over_72_bytes(client: AsyncClient) -> N
     # bcrypt ignora todo lo que pase de 72 bytes; en vez de truncar en silencio (lo que
     # dejaría dos contraseñas distintas con el mismo hash) la validación lo rechaza con 422.
     # Ver ADR-22 y OWASP Password Storage Cheat Sheet.
-    creds = {"email": "long@crehana.com", "password": "a" * 73}
+    creds = {"email": "long@example.com", "password": "a" * 73}
     response = await client.post("/api/v1/auth/register", json=creds)
     assert response.status_code == 422
 
 
 async def test_register_accepts_password_at_72_byte_boundary(client: AsyncClient) -> None:
     # El límite es inclusivo: exactamente 72 bytes se acepta y permite iniciar sesión.
-    creds = {"email": "boundary@crehana.com", "password": "a" * 72}
+    creds = {"email": "boundary@example.com", "password": "a" * 72}
     assert (await client.post("/api/v1/auth/register", json=creds)).status_code == 201
     assert (await client.post("/api/v1/auth/login", json=creds)).status_code == 200
 
 
 async def test_login_wrong_password_returns_401(client: AsyncClient) -> None:
-    creds = {"email": "x@crehana.com", "password": "supersecret123"}
+    creds = {"email": "x@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     bad = await client.post(
         "/api/v1/auth/login", json={"email": creds["email"], "password": "nope12345"}
@@ -148,7 +148,7 @@ async def test_login_with_overlong_password_returns_401_not_500(client: AsyncCli
     # `ValueError` ante >72 bytes (antes truncaba en silencio), así que sin el recorte
     # defensivo del hasher (`_encode`) este intento reventaría en 500. El backstop lo
     # convierte en un 401 normal (credenciales inválidas). Regresión que fija ese contrato.
-    creds = {"email": "overlong-login@crehana.com", "password": "supersecret123"}
+    creds = {"email": "overlong-login@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
     attempt = await client.post(
         "/api/v1/auth/login", json={"email": creds["email"], "password": "a" * 200}
@@ -161,7 +161,7 @@ async def test_login_is_rate_limited_returns_429(app: FastAPI, client: AsyncClie
     app.state.login_rate_limiter = InMemorySlidingWindowRateLimiter(
         max_attempts=2, window_seconds=60
     )
-    creds = {"email": "brute@crehana.com", "password": "supersecret123"}
+    creds = {"email": "brute@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=creds)
 
     assert (await client.post("/api/v1/auth/login", json=creds)).status_code == 200

@@ -112,7 +112,7 @@ async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
 @pytest_asyncio.fixture
 async def auth_headers(client: AsyncClient) -> dict[str, str]:
     """Registra e inicia sesión, devolviendo cabeceras Authorization válidas."""
-    credentials = {"email": "tester@crehana.com", "password": "supersecret123"}
+    credentials = {"email": "tester@example.com", "password": "supersecret123"}
     await client.post("/api/v1/auth/register", json=credentials)
     response = await client.post("/api/v1/auth/login", json=credentials)
     token = response.json()["access_token"]

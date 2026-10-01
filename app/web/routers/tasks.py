@@ -1,4 +1,4 @@
-"""Endpoints de tareas dentro de una lista (§1.a.ii–iv) y bonus (§1.b.iii–iv).
+"""Endpoints de tareas dentro de una lista y de asignación de responsable.
 
 Protegidos con JWT y autorizados por rol de pertenencia. Cuando se fija un responsable
 nuevo (al crear, actualizar o asignar) se **encola** una invitación en el outbox de

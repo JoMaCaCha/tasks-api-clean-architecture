@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "crehana-tasks-api"
+name = "tasks-api-clean-architecture"
 version = "0.1.0"
-description = "API de gestión de listas de tareas — Desafío Técnico Backend (Crehana)"
+description = "API REST de gestión de listas de tareas con FastAPI y arquitectura limpia (hexagonal)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.111",

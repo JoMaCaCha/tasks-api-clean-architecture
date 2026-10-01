@@ -21,7 +21,7 @@ from app.infrastructure.db.repositories import (
 async def _seed_tokens(session_factory: async_sessionmaker[AsyncSession], now: datetime) -> None:
     async with session_factory() as session:
         user = await SqlAlchemyUserRepository(session).create(
-            email="cleanup@crehana.com", hashed_password="x"
+            email="cleanup@example.com", hashed_password="x"
         )
         repo = SqlAlchemyRefreshTokenRepository(session)
         await repo.add(user_id=user.id, token_hash="expired", expires_at=now - timedelta(days=1))

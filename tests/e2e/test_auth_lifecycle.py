@@ -1,4 +1,4 @@
-"""E2E del ciclo de vida de la autenticación contra el servidor real (§1.b.ii, ADR-13).
+"""E2E del ciclo de vida de la autenticación contra el servidor real (ADR-13).
 
 Cubre, sobre HTTP real + PostgreSQL real, lo que el smoke no toca: rotación de refresh con
 detección de reúso, logout de una sesión, logout global (invalida el access vigente) y los

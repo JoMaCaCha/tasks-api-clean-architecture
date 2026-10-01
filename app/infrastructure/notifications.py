@@ -1,7 +1,7 @@
 """Notificadores de email: simulado (log) y real (SMTP), tras el puerto `INotifier`.
 
 El backend se elige por configuración (`NOTIFIER_BACKEND`): `log` simula el envío
-(§1.b.iv) y `smtp` envía de verdad. El envío SMTP es bloqueante, así que se ejecuta en
+y `smtp` envía de verdad. El envío SMTP es bloqueante, así que se ejecuta en
 un hilo (`asyncio.to_thread`) para no bloquear el event loop. Ver DECISION_LOG ADR-9.
 """
 

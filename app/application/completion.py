@@ -1,4 +1,4 @@
-"""Cálculo del porcentaje de completitud de una lista (§1.a.iv).
+"""Cálculo del porcentaje de completitud de una lista.
 
 Función pura (sin I/O) reutilizada por los casos de uso para no duplicar la fórmula.
 El conteo `(total, done)` se obtiene de una agregación en la BD (ver

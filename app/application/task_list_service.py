@@ -1,4 +1,4 @@
-"""Casos de uso de listas de tareas (§1.a.i) con control de acceso por colaborador.
+"""Casos de uso de listas de tareas con control de acceso por colaborador.
 
 La autorización es por **rol de pertenencia** (ver DECISION_LOG ADR-14): no ser miembro
 de una lista la hace indistinguible de inexistente (404); serlo con rol insuficiente

@@ -16,7 +16,7 @@ def etag(response: httpx.Response) -> str:
 
 def unique_email(prefix: str = "e2e") -> str:
     """Email único por corrida: el PostgreSQL real es persistente entre ejecuciones."""
-    return f"{prefix}-{uuid4().hex}@crehana.com"
+    return f"{prefix}-{uuid4().hex}@example.com"
 
 
 async def register(client: httpx.AsyncClient, email: str, password: str = PASSWORD) -> int:

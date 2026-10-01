@@ -24,9 +24,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # URL efectiva: variable de entorno con el mismo default de desarrollo que la app.
-_DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql+asyncpg://crehana:crehana@db:5432/crehana_tasks"
-)
+_DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql+asyncpg://tasks:tasks@db:5432/tasks_db")
 config.set_main_option("sqlalchemy.url", _DATABASE_URL)
 
 target_metadata = Base.metadata
