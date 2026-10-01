@@ -39,7 +39,11 @@ from app.infrastructure.security.password_hasher import BcryptPasswordHasher
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
-SessionDep = Annotated[AsyncSession, Depends(get_session)]
+# `scope="function"`: el commit de la unidad de trabajo (el código tras el `yield` de
+# `get_session`) debe ocurrir ANTES de enviar la respuesta. Con el scope por defecto de las
+# dependencias con `yield` ("request") FastAPI lo ejecuta después de responder, y un cliente
+# que lee justo tras un 201 podría no ver su propia escritura. Ver DECISION_LOG ADR-30.
+SessionDep = Annotated[AsyncSession, Depends(get_session, scope="function")]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 

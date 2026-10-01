@@ -826,6 +826,27 @@ sondas + migraciones ya resueltas).
 
 ---
 
+## ADR-30 — La unidad de trabajo confirma antes de responder (`scope="function"`)
+
+**Contexto.** `get_session` es una dependencia con `yield`: el `commit` de la request vive en el
+código posterior al `yield` (ADR-15, ADR-18). En FastAPI moderno, ese código se ejecuta por
+defecto **después de enviar la respuesta** (scope `"request"`). El cliente podía recibir un `201`
+antes de que la transacción estuviera confirmada y, en la petición inmediata siguiente, no ver su
+propia escritura: login rechazado justo después del registro, o `404` al leer la tarea recién
+creada. Las pruebas de integración no lo detectan (con `ASGITransport` la respuesta llega cuando
+la app ya terminó); las **E2E** contra un servidor real sí (ADR-11).
+
+**Decisión.** Declarar la sesión con `Depends(get_session, scope="function")`
+([app/web/dependencies.py](app/web/dependencies.py)): la dependencia envuelve a la función del
+endpoint y su cierre (commit o rollback) termina **antes** de responder.
+
+**Consecuencias.** Lectura-tras-escritura garantizada para el mismo cliente; un error al
+confirmar se traduce en una respuesta de error en lugar de un éxito ya enviado. FastAPI impide
+que una dependencia con `yield` de scope `"request"` dependa de una de scope `"function"`; hoy
+`get_session` es la única dependencia con `yield` de la capa web.
+
+---
+
 ## Pendientes documentados (camino a producción)
 
 - **Concurrencia optimista en listas** con el mismo mecanismo de ADR-26 (`version_id_col` +
