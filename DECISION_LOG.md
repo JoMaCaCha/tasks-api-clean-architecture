@@ -332,7 +332,10 @@ ejecución (`apt-get upgrade`); (3) **entrypoint en Python** (`docker_entrypoint
 `/bin/sh`) que aplica migraciones y ejecuta uvicorn —elimina la dependencia de shell y deja el
 camino abierto a distroless—; (4) **escaneo Trivy** en la CI que falla en HIGH/CRITICAL
 corregibles; (5) endurecimiento de ejecución en compose (`read_only`, `cap_drop: ALL`,
-`no-new-privileges`, `tmpfs /tmp`) además del usuario sin privilegios.
+`no-new-privileges`, `tmpfs /tmp`) además del usuario sin privilegios; (6) **sin `pip` en la
+imagen final**: se desinstala del venv (etapa builder) y de la base (etapa runtime). La app no
+lo usa en ejecución y sus librerías vendorizadas (msgpack, urllib3, `pkg_resources`) aportaban
+CVEs HIGH/CRITICAL al escaneo sin ningún beneficio.
 
 **Distroless: pendiente concreto.** No se usa distroless porque la variante
 `distroless/python3-debian12` ejecuta Python **3.11** y el proyecto requiere **3.12** (el venv

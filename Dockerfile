@@ -22,9 +22,12 @@ WORKDIR /build
 # después sin re-resolver dependencias (ya están todas presentes).
 COPY requirements.txt pyproject.toml ./
 COPY app ./app
+# Al final se desinstala pip del venv: la app no lo usa en ejecución y sus librerías
+# vendorizadas (msgpack, urllib3, pkg_resources) solo suman CVEs a la imagen (ADR-16).
 RUN pip install --upgrade pip \
     && pip install --require-hashes --no-deps -r requirements.txt \
-    && pip install --no-deps .
+    && pip install --no-deps . \
+    && pip uninstall -y pip
 
 # ----------------------------- Runtime -----------------------------
 FROM ${PYTHON_IMAGE} AS runtime
@@ -33,11 +36,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:$PATH"
 
-# Aplica parches de seguridad del SO sobre la base (reduce CVEs corregibles) y crea un
-# usuario sin privilegios para ejecutar la aplicación.
+# Aplica parches de seguridad del SO sobre la base (reduce CVEs corregibles), retira el pip
+# de la imagen base (no se usa en ejecución; ver ADR-16) y crea un usuario sin privilegios
+# para ejecutar la aplicación.
 RUN apt-get update \
     && apt-get -y --no-install-recommends upgrade \
     && rm -rf /var/lib/apt/lists/* \
+    && /usr/local/bin/python -m pip uninstall -y pip \
     && useradd --create-home --uid 1000 appuser
 
 COPY --from=builder /opt/venv /opt/venv
