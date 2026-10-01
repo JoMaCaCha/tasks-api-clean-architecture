@@ -14,15 +14,15 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool, StaticPool
 
-from app.domain.exceptions import DomainError
-from app.infrastructure.db import Base  # importar el paquete registra los modelos ORM
-from app.infrastructure.db.session import get_session
-from app.web.main import create_app
-
-# `JWT_SECRET_KEY` es obligatorio (app/infrastructure/config.py). Ningún módulo de la app
-# lo lee al importarse (config y motor son perezosos), así que basta definirlo aquí para
-# que los tests sean herméticos, sin depender de un archivo .env.
+# `JWT_SECRET_KEY` es obligatorio (app/infrastructure/config.py) y `app.web.main` construye la
+# aplicación al importarse (`app = create_app()` lee la configuración). Por eso se define
+# ANTES de importar la app: así los tests son herméticos y no dependen de un archivo .env.
 os.environ.setdefault("JWT_SECRET_KEY", "test-jwt-secret-key-with-at-least-32-chars")
+
+from app.domain.exceptions import DomainError  # noqa: E402
+from app.infrastructure.db import Base  # noqa: E402  (registra los modelos ORM)
+from app.infrastructure.db.session import get_session  # noqa: E402
+from app.web.main import create_app  # noqa: E402
 
 # Base de datos de la suite. Por defecto, SQLite async en memoria (rápida y hermética). Si
 # se define `TEST_DATABASE_URL` (p. ej. `postgresql+asyncpg://...`) la misma suite corre
