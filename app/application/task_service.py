@@ -197,6 +197,7 @@ class TaskService:
                 notify = assignee
         updated = await self._tasks.update(
             task_id,
+            expected_version=current.version,
             title=title,
             description=description,
             status=status,
@@ -218,6 +219,7 @@ class TaskService:
         self._ensure_version(task, expected_version)
         updated = await self._tasks.update(
             task_id,
+            expected_version=task.version,
             title=task.title,
             description=task.description,
             status=status,
@@ -231,7 +233,7 @@ class TaskService:
     ) -> None:
         task = await self._get_task_for(list_id, task_id, user_id, ListRole.EDITOR)
         self._ensure_version(task, expected_version)
-        deleted = await self._tasks.delete(task_id)
+        deleted = await self._tasks.delete(task_id, expected_version=task.version)
         if not deleted:
             # Borrado concurrente entre la verificación y la escritura: se traduce a 404,
             # de forma coherente con el resto de escrituras (`_require_updated`) y con
@@ -253,6 +255,7 @@ class TaskService:
         user = await self._ensure_assignee(list_id, assignee_id)
         updated = await self._tasks.update(
             task_id,
+            expected_version=task.version,
             title=task.title,
             description=task.description,
             status=task.status,

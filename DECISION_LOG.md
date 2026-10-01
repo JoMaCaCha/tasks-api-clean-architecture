@@ -850,6 +850,28 @@ que una dependencia con `yield` de scope `"request"` dependa de una de scope `"f
 
 ---
 
+## ADR-31 — El repositorio escribe solo sobre la versión que validó el servicio
+
+**Contexto.** ADR-26 confiaba en `version_id_col` para cerrar la ventana entre la comprobación de
+`If-Match` (en el servicio) y el UPDATE (en el repositorio). Pero el repositorio devuelve
+entidades de dominio, no instancias ORM, y el *identity map* de SQLAlchemy solo guarda
+referencias débiles: al llegar a `update`, `session.get` puede **releer** la fila. Si otra
+transacción la cambió entretanto, la instancia releída trae la versión nueva y `version_id_col`
+filtra por ella, así que la escritura pisa a la otra. Las E2E lo mostraban de forma intermitente
+(dos `PATCH` concurrentes con el mismo ETag respondían ambos 200 y la tarea quedaba en versión 3);
+en PostgreSQL con cliente y servidor en el mismo host ocurría en ~0,3 % de los pares.
+
+**Decisión.** `update` y `delete` del repositorio reciben `expected_version` —la versión que el
+servicio leyó y validó— y rechazan la escritura con 412 si la fila ya no está en esa versión.
+`version_id_col` sigue cubriendo la ventana restante (entre esa comprobación y el UPDATE, con el
+bloqueo de fila de PostgreSQL). El doble en memoria aplica el mismo contrato.
+
+**Consecuencias.** Sin *lost update*: comprobado con 3.000 pares de escrituras concurrentes contra
+PostgreSQL 16 (todos 200 + 412). Una prueba de integración con dos sesiones lo reproduce de forma
+determinista (`tests/integration/test_task_versioning.py`).
+
+---
+
 ## Pendientes documentados (camino a producción)
 
 - **Concurrencia optimista en listas** con el mismo mecanismo de ADR-26 (`version_id_col` +

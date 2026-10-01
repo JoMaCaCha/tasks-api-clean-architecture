@@ -11,7 +11,7 @@ from app.domain.entities import (
     User,
 )
 from app.domain.enums import ListRole, OutboxStatus, TaskPriority, TaskStatus
-from app.domain.exceptions import NotFoundError
+from app.domain.exceptions import NotFoundError, PreconditionFailedError
 from app.domain.repositories import (
     IListMemberRepository,
     IOutboxRepository,
@@ -167,6 +167,7 @@ class FakeTaskRepository(ITaskRepository):
         self,
         task_id: int,
         *,
+        expected_version: int,
         title: str,
         description: str | None,
         status: TaskStatus,
@@ -176,6 +177,8 @@ class FakeTaskRepository(ITaskRepository):
         current = self._items.get(task_id)
         if current is None:
             return None
+        if current.version != expected_version:  # mismo contrato que el repo real (ADR-31)
+            raise PreconditionFailedError(f"La tarea {task_id} fue modificada")
         # Espejo de `version_id_col`: toda escritura por ORM incrementa la versión.
         updated = current.model_copy(
             update={
@@ -190,8 +193,14 @@ class FakeTaskRepository(ITaskRepository):
         self._items[task_id] = updated
         return updated
 
-    async def delete(self, task_id: int) -> bool:
-        return self._items.pop(task_id, None) is not None
+    async def delete(self, task_id: int, *, expected_version: int) -> bool:
+        current = self._items.get(task_id)
+        if current is None:
+            return False
+        if current.version != expected_version:
+            raise PreconditionFailedError(f"La tarea {task_id} fue modificada")
+        del self._items[task_id]
+        return True
 
     async def clear_assignee_in_list(self, list_id: int, user_id: int) -> int:
         count = 0

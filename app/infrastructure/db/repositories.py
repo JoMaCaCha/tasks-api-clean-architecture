@@ -212,6 +212,7 @@ class SqlAlchemyTaskRepository(ITaskRepository):
         self,
         task_id: int,
         *,
+        expected_version: int,
         title: str,
         description: str | None,
         status: TaskStatus,
@@ -221,6 +222,13 @@ class SqlAlchemyTaskRepository(ITaskRepository):
         model = await self._session.get(TaskModel, task_id)
         if model is None:
             return None
+        # La instancia que leyó el servicio puede ya no estar en el identity map (SQLAlchemy solo
+        # guarda referencias débiles), así que `get` pudo releer la fila. Si otra transacción la
+        # cambió entretanto, la versión releída ya no es la validada contra `If-Match`: sin esta
+        # comprobación, `version_id_col` filtraría por la versión NUEVA y esta escritura pisaría
+        # a la otra (*lost update*). Ver DECISION_LOG ADR-31.
+        if model.version != expected_version:
+            raise _stale_task(task_id)
         model.title = title
         model.description = description
         model.status = status
@@ -237,10 +245,12 @@ class SqlAlchemyTaskRepository(ITaskRepository):
         await self._session.refresh(model)
         return Task.model_validate(model)
 
-    async def delete(self, task_id: int) -> bool:
+    async def delete(self, task_id: int, *, expected_version: int) -> bool:
         model = await self._session.get(TaskModel, task_id)
         if model is None:
             return False
+        if model.version != expected_version:  # misma ventana que en `update` (ADR-31)
+            raise _stale_task(task_id)
         await self._session.delete(model)
         # El DELETE por ORM también lleva `WHERE version = :actual` (version_id_col): si la fila
         # cambió tras la lectura del servicio, `StaleDataError` → 412, igual que en `update`.

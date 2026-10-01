@@ -117,15 +117,25 @@ class ITaskRepository(ABC):
         self,
         task_id: int,
         *,
+        expected_version: int,
         title: str,
         description: str | None,
         status: TaskStatus,
         priority: TaskPriority,
         assignee_id: int | None,
-    ) -> Task | None: ...
+    ) -> Task | None:
+        """Actualiza la tarea si sigue en ``expected_version``; ``None`` si ya no existe.
+
+        ``expected_version`` es la versión que el servicio leyó y validó contra ``If-Match``.
+        Si otra transacción cambió la tarea entretanto, lanza `PreconditionFailedError` (412)
+        en lugar de pisar esa escritura (*lost update*). Ver DECISION_LOG ADR-26 y ADR-31.
+        """
+        ...
 
     @abstractmethod
-    async def delete(self, task_id: int) -> bool: ...
+    async def delete(self, task_id: int, *, expected_version: int) -> bool:
+        """Elimina la tarea si sigue en ``expected_version`` (mismo contrato que `update`)."""
+        ...
 
     @abstractmethod
     async def clear_assignee_in_list(self, list_id: int, user_id: int) -> int:
